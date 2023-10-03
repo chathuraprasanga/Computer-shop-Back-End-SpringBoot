@@ -31,7 +31,7 @@ public class CustomerUserDetailsService implements UserDetailsService {
         if(!Objects.isNull(userDetail))
             return  new User(userDetail.getEmail(),userDetail.getPassword(),new ArrayList<>());
         else
-            throw new UsernameNotFoundException("User not fountd.");
+            throw new UsernameNotFoundException("User not found.");
     }
 
     public com.example.Computer_shop_management_system.POJO.User getUserDetail(){

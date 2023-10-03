@@ -1,12 +1,15 @@
 package com.example.Computer_shop_management_system.serviceImple;
 
 import com.example.Computer_shop_management_system.JWT.CustomerUserDetailsService;
+import com.example.Computer_shop_management_system.JWT.JwtFilter;
 import com.example.Computer_shop_management_system.JWT.JwtUtil;
 import com.example.Computer_shop_management_system.POJO.User;
 import com.example.Computer_shop_management_system.constents.AppConstants;
 import com.example.Computer_shop_management_system.dao.UserDao;
 import com.example.Computer_shop_management_system.service.UserService;
-import com.example.Computer_shop_management_system.utis.AppUtils;
+import com.example.Computer_shop_management_system.utils.AppUtils;
+import com.example.Computer_shop_management_system.utils.EmailUtils;
+import com.example.Computer_shop_management_system.wrapper.UserWrapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -16,7 +19,10 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @Slf4j
 @Service
@@ -33,6 +39,12 @@ public class UserServiceImpl implements UserService {
 
     @Autowired
     JwtUtil jwtUtil;
+
+    @Autowired
+    JwtFilter jwtFilter;
+
+    @Autowired
+    private EmailUtils emailUtils;
 
 
     @Override
@@ -102,4 +114,54 @@ public class UserServiceImpl implements UserService {
         return new ResponseEntity<String>("(\"message\":\""+"Bad Credentials."+"\"}",
                 HttpStatus.BAD_REQUEST);
     }
+
+    @Override
+    public ResponseEntity<List<UserWrapper>> getAllUser() {
+        try{
+            if (jwtFilter.isAdmin()){
+                return new ResponseEntity<>(userDao.getAllUser(), HttpStatus.OK);
+            }else {
+                return new ResponseEntity<>(new ArrayList<>(),HttpStatus.UNAUTHORIZED);
+            }
+        }catch (Exception ex){
+            ex.printStackTrace();
+        }
+        return new  ResponseEntity<>(new ArrayList<>(),HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @Override
+    public ResponseEntity<String> update(Map<String, String> requestMap) {
+        try{
+            if (jwtFilter.isAdmin()){
+                Optional<User> optional = userDao.findById(Integer.parseInt(requestMap.get("id")));
+                if (optional.isPresent()){
+                    userDao.updateStatus(requestMap.get("userStatus"), Integer.parseInt(requestMap.get("id")));
+//                    send mails to all all admins
+                    sendMailtoAllAdmin(requestMap.get("userStatus"), optional.get().getEmail(), userDao.getAllAdmin());
+                    return AppUtils.getResponseEntity("User status updated successfully.", HttpStatus.OK);
+                }else {
+                    AppUtils.getResponseEntity("User id doesn't exist.", HttpStatus.OK);
+                }
+            }else {
+                return AppUtils.getResponseEntity(AppConstants.UNAUTHORIZED_ACCESS, HttpStatus.UNAUTHORIZED);
+            }
+        }catch (Exception ex){
+            ex.printStackTrace();
+        }
+        return AppUtils.getResponseEntity(AppConstants.SOMETHING_WENT_WRONG, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+
+    private void sendMailtoAllAdmin(String userStatus, String user, List<String> allAdmin) {
+        allAdmin.remove(jwtFilter.getCurrentUser());
+        if (userStatus != null && userStatus.equalsIgnoreCase("true")){
+            emailUtils.sendSimpleMessage(jwtFilter.getCurrentUser(), "Account approved", "USER:- "+ user +"\nis approved by \nADMIN:- "+jwtFilter.getCurrentUser(), allAdmin);
+        }else {
+            emailUtils.sendSimpleMessage(jwtFilter.getCurrentUser(), "Account disabled", "USER:- "+ user +"\nis approved by \nADMIN:- "+jwtFilter.getCurrentUser(), allAdmin);
+        }
+    }
+
+
+
+
 }

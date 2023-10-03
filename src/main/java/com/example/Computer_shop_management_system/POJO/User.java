@@ -11,7 +11,11 @@ import java.io.Serializable;
 //find user by email for login purpose
 @NamedQuery(name = "User.findByEmail", query = "select u from User u where u.email=:email")
 
+@NamedQuery(name = "User.getAllUser", query = "select new com.example.Computer_shop_management_system.wrapper.UserWrapper(u.id,u.userName,u.email,u.contactNumber,u.userStatus) from User u where u.userRole='user'")
 
+@NamedQuery(name = "User.updateStatus", query = "update User u set u.userStatus=:userStatus where u.id=:id")
+
+@NamedQuery(name = "User.getAllAdmin", query = "select u.email from User u where u.userRole='admin'")
 
 @Data
 @Entity
@@ -44,7 +48,6 @@ public class User implements Serializable {
 
     @Column(name = "userStatus")
     private String userStatus;
-
 
 
 

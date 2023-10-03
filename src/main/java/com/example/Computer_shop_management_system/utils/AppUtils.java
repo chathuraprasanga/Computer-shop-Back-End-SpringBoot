@@ -1,4 +1,4 @@
-package com.example.Computer_shop_management_system.utis;
+package com.example.Computer_shop_management_system.utils;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
