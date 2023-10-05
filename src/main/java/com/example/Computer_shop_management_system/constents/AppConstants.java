@@ -8,4 +8,6 @@ public class AppConstants {
 
     public static final String UNAUTHORIZED_ACCESS = "Unauthorized access.";
 
+    public static  final  String STORE_LOCATION ="D:\\Springboot Projects\\Computer Shop\\File Store";
+
 }
