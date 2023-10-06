@@ -11,14 +11,21 @@ import com.itextpdf.text.pdf.PdfPCell;
 import com.itextpdf.text.pdf.PdfPTable;
 import com.itextpdf.text.pdf.PdfWriter;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.pdfbox.io.IOUtils;
 import org.json.JSONArray;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Stream;
 
 @Slf4j
@@ -73,8 +80,8 @@ public class BillServiceImpl implements BillService {
 //                }
 //                document.add(table);
 
-                JSONArray jsonArray = AppUtils.getJsonArrayFromString((String)requestMap.get("productDetails"));
-                for (int i=0; i < jsonArray.length(); i++){
+                JSONArray jsonArray = AppUtils.getJsonArrayFromString((String) requestMap.get("productDetails"));
+                for (int i = 0; i < jsonArray.length(); i++) {
                     addRows(table, AppUtils.getMapFromJson(jsonArray.getString(i)));
                 }
                 document.add(table);
@@ -85,7 +92,7 @@ public class BillServiceImpl implements BillService {
                 document.add(footer);
                 document.close();
 
-                return  new ResponseEntity<>("{\"uuid\":\""+fileName+"\"}",HttpStatus.OK);
+                return new ResponseEntity<>("{\"uuid\":\"" + fileName + "\"}", HttpStatus.OK);
 
             }
             return AppUtils.getResponseEntity("Required data not found. ", HttpStatus.BAD_REQUEST);
@@ -95,7 +102,7 @@ public class BillServiceImpl implements BillService {
         return AppUtils.getResponseEntity(AppConstants.SOMETHING_WENT_WRONG, HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
-//    add cell values
+    //    add cell values
     private void addRows(PdfPTable table, Map<String, Object> data) {
         log.info("Inside addRow");
         table.addCell((String) data.get("name"));
@@ -139,7 +146,7 @@ public class BillServiceImpl implements BillService {
         }
     }
 
-//    set pdf specifications
+    //    set pdf specifications
     private void setRectanglePdf(Document document) throws DocumentException {
         log.info("Inside setRectanglePdf");
         Rectangle rect = new Rectangle(577, 825, 18, 15);
@@ -183,4 +190,67 @@ public class BillServiceImpl implements BillService {
     }
 
 
+    @Override
+    public ResponseEntity<List<Bill>> getBills() {
+        try {
+            List<Bill> list = new ArrayList<>();
+            if (jwtFilter.isAdmin()) {
+                list = billDao.getAllBills();
+
+            } else {
+                list = billDao.getBillByUserName(jwtFilter.getCurrentUser());
+
+            }
+            return new ResponseEntity<>(list, HttpStatus.OK);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return null;
+    }
+
+    @Override
+    public ResponseEntity<byte[]> getPdf(Map<String, Object> requestMap) {
+        log.info("Inside getPdf : requestMap{}", requestMap);
+        try {
+            byte[] byteArray = new byte[0];
+            if (!requestMap.containsKey("uuid") && validateRequestMap(requestMap))
+                return new ResponseEntity<>(byteArray, HttpStatus.BAD_REQUEST);
+            String filePath = AppConstants.STORE_LOCATION + "\\" + (String) requestMap.get("uuid") + ".pdf";
+            if (AppUtils.isFileExist(filePath)){
+                byteArray = getByteArray(filePath);
+                return new ResponseEntity<>(byteArray, HttpStatus.OK);
+            }else {
+                requestMap.put("isGenerate", false);
+                generateReport(requestMap);
+                byteArray = getByteArray(filePath);
+                return new ResponseEntity<>(byteArray,HttpStatus.OK);
+            }
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return null;
+    }
+
+    private byte[] getByteArray(String filePath) throws Exception{
+        File initialFile = new File(filePath);
+        InputStream targetStream = new FileInputStream(initialFile);
+        byte[] byteArray = IOUtils.toByteArray(targetStream);
+        targetStream.close();
+        return byteArray;
+    }
+
+    @Override
+    public ResponseEntity<String> deleteBill(Integer id) {
+        try{
+            Optional optional = billDao.findById(id);
+            if (optional.isPresent()){
+                billDao.deleteById(id);
+                return AppUtils.getResponseEntity("Bill deleted successfully. ", HttpStatus.OK);
+            }
+            return AppUtils.getResponseEntity("Bill id doesn't exists. ", HttpStatus.OK);
+        }catch (Exception ex){
+            ex.printStackTrace();
+        }
+        return AppUtils.getResponseEntity(AppConstants.SOMETHING_WENT_WRONG, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
 }
