@@ -69,7 +69,7 @@ public class UserServiceImpl implements UserService {
 
 //    check the received map have correct keys
     private boolean validateSignUpMap(Map<String,String> requestMap){
-        if (requestMap.containsKey("username") && requestMap.containsKey("contactNumber")
+        if (requestMap.containsKey("userName") && requestMap.containsKey("contactNumber")
                 && requestMap.containsKey("email") && requestMap.containsKey("password")){
             return true;
         }
@@ -79,7 +79,7 @@ public class UserServiceImpl implements UserService {
 //    convert map to user object
     private User getUserFromMap(Map<String,String> requestMap){
         User user = new User();
-        user.setUserName(requestMap.get("username"));
+        user.setUserName(requestMap.get("userName"));
         user.setContactNumber((requestMap.get("contactNumber")));
         user.setEmail(requestMap.get("email"));
         user.setPassword(requestMap.get("password"));
@@ -103,15 +103,14 @@ public class UserServiceImpl implements UserService {
                                     customerUserDetailsService.getUserDetail().getUserRole()) + "\"}",
                     HttpStatus.OK);
                 }else {
-                    return new ResponseEntity<String>("(\"message\":\""+"Wait for Admin Approval."+"\"}",
-                            HttpStatus.BAD_REQUEST);
+                    return AppUtils.getResponseEntity("Wait for admin approval. ", HttpStatus.BAD_REQUEST);
                 }
             }
+            return AppUtils.getResponseEntity("Bad Credentials. ", HttpStatus.BAD_REQUEST);
         }catch (Exception ex){
             log.error("{}",ex);
         }
-        return new ResponseEntity<String>("(\"message\":\""+"Bad Credentials."+"\"}",
-                HttpStatus.BAD_REQUEST);
+        return AppUtils.getResponseEntity("Bad Credentials. ", HttpStatus.BAD_REQUEST);
     }
 
     @Override
@@ -191,9 +190,12 @@ public class UserServiceImpl implements UserService {
     public ResponseEntity<String> forgotPassword(Map<String, String> requestMap) {
         try{
             User user = userDao.findByEmail(requestMap.get("email"));
-            if (!Objects.isNull(user) && !Strings.isNullOrEmpty(user.getEmail()))
+            if (!Objects.isNull(user) && !Strings.isNullOrEmpty(user.getEmail())) {
                 emailUtils.forgotMail(user.getEmail(), "Credential by FIXCOM Management system.", user.getPassword());
-            return AppUtils.getResponseEntity("Check your mail for credentials.", HttpStatus.OK);
+                return AppUtils.getResponseEntity("Check your mail for credentials.", HttpStatus.OK);
+            }else {
+               return AppUtils.getResponseEntity("Email id can't find. ", HttpStatus.BAD_REQUEST);
+            }
         }catch (Exception ex){
             ex.printStackTrace();
         }
